@@ -1,0 +1,23 @@
+# Keil intermediate compiled files
+*.o
+*.d
+*.crf
+*.map
+*.axf
+*.lnp
+*.dep
+*.lst
+*.build_log.htm
+*.htm
+*.sct
+
+# Keil local user configs and backup files
+*.uvoptx
+*.uvguix.*
+*.Administrator
+*.bak
+
+# Default output folders
+DebugConfig/
+Listings/
+Objects/
