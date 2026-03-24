@@ -21,3 +21,11 @@
 DebugConfig/
 Listings/
 Objects/
+OBJ/
+
+# folders to ignore
+**/.vscode/
+**/DebugConfig/
+**/OBJ/
+**/Listings/
+**/Objects/
