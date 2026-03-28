@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STM32 固件数据显示</title>
+    <!-- 引入 Chart.js 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 40px; background-color: #f4f7f6; color: #333; }
+        h1, h2 { color: #2c3e50; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; }
+        thead { background-color: #3498db; color: #fff; }
+        tbody tr:nth-child(even) { background-color: #f2f2f2; }
+        .chart-container { margin-top: 40px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>STM32 固件数据显示平台</h1>
+
+        <!-- 图表容器 -->
+        <div class="chart-container">
+            <h2>数据图表</h2>
+            <canvas id="firmwareChart"></canvas>
+        </div>
+
+        <!-- 谐波图表容器 -->
+        <div class="chart-container">
+            <h2>各次谐波畸变率对比 (IHD 2, 3, 5, 7)</h2>
+            <canvas id="harmonicChart"></canvas>
+        </div>
+
+        <!-- 数据表格 -->
+        <h2>实时电气参数 (基于 8 通道寄存器)</h2>
+        <div style="overflow-x: auto;">
+            <table style="white-space: nowrap;">
+                <thead>
+                    <tr>
+                        <th>通道</th>
+                        <th>真实有效值 (A)</th>
+                        <th>原始有效值</th>
+                        <th>1次/基波有效值 (A)</th>
+                        <th>THD (%)</th>
+                        <th>波峰因数</th>
+                        <th>直流分量</th>
+                        <th>频率 (Hz)</th>
+                        <th>过零点 (°)</th>
+                        <th>峰值 (A)</th>
+                        <th>峰值相位 (°)</th>
+                        <th>谷值 (A)</th>
+                        <th>谷值相位 (°)</th>
+                        <th>1次谐波 (%)</th>
+                        <th>2次谐波 (%)</th>
+                        <th>3次谐波 (%)</th>
+                        <th>5次谐波 (%)</th>
+                        <th>7次谐波 (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in table_data %}
+                    <tr>
+                        <td>{{ row.channel }}</td>
+                        <td>{{ row.real_rms }}</td>
+                        <td>{{ row.raw_rms }}</td>
+                        <td>{{ row.fundamental }}</td>
+                        <td>{{ row.thd }}</td>
+                        <td>{{ row.crest_factor }}</td>
+                        <td>{{ row.true_dc }}</td>
+                        <td>{{ row.grid_freq }}</td>
+                        <td>{{ row.zero_crossing_phase }}</td>
+                        <td>{{ row.peak_val }}</td>
+                        <td>{{ row.peak_phase }}</td>
+                        <td>{{ row.valley_val }}</td>
+                        <td>{{ row.valley_phase }}</td>
+                        <td>{{ row.ihd_1 }}</td>
+                        <td>{{ row.ihd_2 }}</td>
+                        <td>{{ row.ihd_3 }}</td>
+                        <td>{{ row.ihd_5 }}</td>
+                        <td>{{ row.ihd_7 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 从Flask模板获取数据
+        const labels = JSON.parse({{ chart_labels | safe }});
+        const rmsData = JSON.parse({{ chart_values_rms | safe }});
+        const fundData = JSON.parse({{ chart_values_fundamental | safe }});
+
+        const data = {
+            labels: labels,
+            datasets: [
+                {
+                    label: '真实有效值 / Real RMS (A)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    data: rmsData,
+                    borderWidth: 1
+                },
+                {
+                    label: '基波有效值 / Fundamental RMS (A)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    data: fundData,
+                    borderWidth: 1
+                }
+            ]
+        };
+
+        const config = {
+            type: 'bar',
+            data: data,
+            options: {
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        };
+
+        // 渲染图表
+        new Chart(document.getElementById('firmwareChart'), config);
+
+        // --- 渲染谐波图表 ---
+        const ihd2Data = JSON.parse({{ chart_ihd_2 | safe }});
+        const ihd3Data = JSON.parse({{ chart_ihd_3 | safe }});
+        const ihd5Data = JSON.parse({{ chart_ihd_5 | safe }});
+        const ihd7Data = JSON.parse({{ chart_ihd_7 | safe }});
+
+        const harmonicData = {
+            labels: labels,
+            datasets: [
+                {
+                    label: '2次谐波 (%)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                    data: ihd2Data
+                },
+                {
+                    label: '3次谐波 (%)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    data: ihd3Data
+                },
+                {
+                    label: '5次谐波 (%)',
+                    backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                    data: ihd5Data
+                },
+                {
+                    label: '7次谐波 (%)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    data: ihd7Data
+                }
+            ]
+        };
+
+        new Chart(document.getElementById('harmonicChart'), {
+            type: 'bar',
+            data: harmonicData,
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+    </script>
+
+</body>
+</html>

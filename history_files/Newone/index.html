@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>多设备护层环流监测平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .header { background: #fff; padding: 20px 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;}
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .header h1 { margin: 0; color: #333; font-size: 24px;}
+        
+        .controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
+        .control-group { display: flex; align-items: center; gap: 10px; }
+        .control-group label { font-weight: bold; color: #555; }
+        
+        select, input[type="text"] { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; outline: none;}
+        select { min-width: 150px; background: white; cursor: pointer; }
+        
+        button { background: #007bff; color: white; border: none; padding: 9px 20px; font-size: 15px; border-radius: 5px; cursor: pointer; transition: 0.3s; font-weight: bold;}
+        button:hover { background: #0056b3; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #c82333; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        
+        #status { font-weight: bold; margin-left: auto; font-size: 15px; }
+        
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .chart { width: 100%; height: 300px; }
+        .metrics { display: flex; justify-content: space-around; margin-top: 15px; font-size: 14px; background: #f8f9fa; padding: 10px; border-radius: 6px; }
+        .metric-item span { font-weight: bold; color: #007bff; font-size: 16px;}
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-top">
+        <h1>⚡ 多设备护层环流实时监测大屏</h1>
+        <span id="status"></span>
+    </div>
+    <div class="controls">
+        <div class="control-group">
+            <label>目标设备:</label>
+            <select id="deviceList" onchange="onDeviceChange()"></select>
+        </div>
+        <button id="fetchBtn" onclick="fetchData()">📡 采集当前设备</button>
+        
+        <div style="width: 1px; height: 30px; background: #ccc; margin: 0 10px;"></div>
+        
+        <div class="control-group">
+            <label>新增设备:</label>
+            <select id="newType" onchange="toggleInputType()" style="min-width: 80px;">
+                <option value="ip">IP</option>
+                <option value="485">RS485</option>
+            </select>
+            <input type="text" id="newAddr" placeholder="例如 192.168.1.100">
+            <button onclick="addDevice()">➕ 存入列表</button>
+        </div>
+        <button class="danger" onclick="removeDevice()">🗑️ 删除选中</button>
+    </div>
+</div>
+
+<div class="grid-container">
+    <div class="card"><div id="chart0" class="chart"></div><div class="metrics" id="metrics0">等待采集数据...</div></div>
+    <div class="card"><div id="chart1" class="chart"></div><div class="metrics" id="metrics1">等待采集数据...</div></div>
+    <div class="card"><div id="chart2" class="chart"></div><div class="metrics" id="metrics2">等待采集数据...</div></div>
+    <div class="card"><div id="chart3" class="chart"></div><div class="metrics" id="metrics3">等待采集数据...</div></div>
+</div>
+
+<script>
+    // ------------------ 多设备列表本地存储管理 ------------------
+    // 数据结构升级：存储格式为 "类型|地址" (如 "ip|192.168.1.100" 或 "485|COM3")
+    let devices = JSON.parse(localStorage.getItem('stm32_devices_v2')) || ["ip|192.168.1.100"];
+
+    function initDeviceList() {
+        const select = document.getElementById('deviceList');
+        select.innerHTML = '';
+        if (devices.length === 0) {
+            select.innerHTML = '<option value="">(空) 请添加设备</option>';
+        } else {
+            devices.forEach(dev => {
+                const parts = dev.split('|');
+                const type = parts[0];
+                const addr = parts[1];
+                const opt = document.createElement('option');
+                opt.value = dev;
+                opt.innerText = type === 'ip' ? `🌐 IP: ${addr}` : `🔌 485: ${addr}`;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    function toggleInputType() {
+        const type = document.getElementById('newType').value;
+        const addrInput = document.getElementById('newAddr');
+        if(type === 'ip') {
+            addrInput.placeholder = "例如 192.168.1.100";
+        } else {
+            addrInput.placeholder = "例如 COM3";
+        }
+    }
+
+    function addDevice() {
+        const type = document.getElementById('newType').value;
+        const addr = document.getElementById('newAddr').value.trim();
+        if (addr) {
+            const devStr = `${type}|${addr}`;
+            if (!devices.includes(devStr)) {
+                devices.push(devStr);
+                localStorage.setItem('stm32_devices_v2', JSON.stringify(devices));
+                initDeviceList();
+                document.getElementById('deviceList').value = devStr;
+                document.getElementById('newAddr').value = '';
+                showStatus(`✅ 成功添加: ${addr}`, "#28a745");
+            } else {
+                showStatus(`⚠️ 设备 ${addr} 已存在`, "#ffc107");
+            }
+        }
+    }
+
+    function removeDevice() {
+        const currentDev = document.getElementById('deviceList').value;
+        if (currentDev) {
+            devices = devices.filter(dev => dev !== currentDev);
+            localStorage.setItem('stm32_devices_v2', JSON.stringify(devices));
+            initDeviceList();
+            showStatus(`🗑️ 已删除设备`, "#dc3545");
+            clearCharts();
+        }
+    }
+
+    function onDeviceChange() {
+        clearCharts();
+        const val = document.getElementById('deviceList').value;
+        if(val) {
+            const addr = val.split('|')[1];
+            showStatus(`已切换至设备 ${addr}，等待采集`, "#007bff");
+        }
+    }
+
+    function showStatus(text, color) {
+        const status = document.getElementById('status');
+        status.innerText = text;
+        status.style.color = color || "#333";
+    }
+
+    // ------------------ 图表初始化与数据请求 ------------------
+    const charts = [];
+    window.onload = () => {
+        initDeviceList();
+        for (let i = 0; i < 4; i++) {
+            const chart = echarts.init(document.getElementById('chart' + i));
+            chart.setOption({
+                title: { text: 'Channel ' + (i + 1), left: 'center' },
+                tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', boundaryGap: false, data: Array.from({length: 256}, (_, idx) => idx) },
+                yAxis: { type: 'value', name: 'ADC Value', min: 'dataMin', max: 'dataMax' },
+                series: [{ data: [], type: 'line', smooth: true, itemStyle: {color: '#007bff'}, areaStyle: {opacity: 0.1} }]
+            });
+            charts.push(chart);
+        }
+    };
+
+    window.onresize = () => { charts.forEach(c => c.resize()); };
+
+    function clearCharts() {
+        for (let i = 0; i < 4; i++) {
+            charts[i].setOption({ series: [{ data: [] }] });
+            document.getElementById('metrics' + i).innerHTML = "等待采集数据...";
+        }
+    }
+
+    async function fetchData() {
+        const btn = document.getElementById('fetchBtn');
+        const targetDev = document.getElementById('deviceList').value;
+        
+        if (!targetDev) {
+            showStatus("❌ 无可用设备，请先添加", "#d9534f");
+            return;
+        }
+
+        const [type, addr] = targetDev.split('|');
+
+        btn.disabled = true;
+        btn.innerText = "⏳ 正在连接...";
+        showStatus(`正在连接 ${addr} 获取波形...`, "#007bff");
+
+        try {
+            // 向本地后台请求特定设备(IP或485)的波形
+            const response = await fetch(`/api/get_data?type=${type}&addr=${encodeURIComponent(addr)}`);
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showStatus(`✅ 成功拉取 ${addr} 的数据`, "#28a745");
+                for (let i = 0; i < 4; i++) {
+                    charts[i].setOption({ series: [{ data: result.waveforms[i] }] });
+                    const m = result.metrics[i];
+                    document.getElementById('metrics' + i).innerHTML = `
+                        <div class="metric-item">RMS: <span>${m.rms}</span></div>
+                        <div class="metric-item">直流偏置: <span>${m.dc}</span></div>
+                        <div class="metric-item">THD: <span>${m.thd}%</span></div>
+                    `;
+                }
+            } else {
+                showStatus(`❌ 采集失败: ${result.message}`, "#d9534f");
+            }
+        } catch (error) {
+            showStatus("❌ 无法连接到后台服务或超时", "#d9534f");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "📡 采集当前设备";
+        }
+    }
+</script>
+</body>
+</html>
