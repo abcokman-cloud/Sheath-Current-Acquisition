@@ -5,35 +5,35 @@ from dash import html
 
 
 CABLES = [
-    {"id": "cbl-1", "name": "1号高压电缆", "pos": "配电室 A 相"},
-    {"id": "cbl-2", "name": "2号高压电缆", "pos": "配电室 B 相"},
-    {"id": "cbl-3", "name": "3号高压电缆", "pos": "配电室 C 相"},
-    {"id": "cbl-4", "name": "4号联络电缆", "pos": "1号隧道"},
+    {"id": "cbl-1", "name": "HV Cable 1", "pos": "Switchgear Phase A"},
+    {"id": "cbl-2", "name": "HV Cable 2", "pos": "Switchgear Phase B"},
+    {"id": "cbl-3", "name": "HV Cable 3", "pos": "Switchgear Phase C"},
+    {"id": "cbl-4", "name": "Tie Cable 4", "pos": "Tunnel 1"},
 ]
 
 ALARM_MENU = [
-    {"id": "alarm-list", "name": "报警列表", "pos": "所有异常历史记录"},
-    {"id": "alarm-config", "name": "报警设置", "pos": "阈值与通知配置"},
+    {"id": "alarm-list", "name": "Alarm List", "pos": "All abnormal history logs"},
+    {"id": "alarm-config", "name": "Alarm Config", "pos": "Threshold and notification settings"},
 ]
 
 DEVICE_MENU = [
-    {"id": "device-add", "name": "新增设备", "pos": "录入新电缆及设备信息"},
-    {"id": "device-list", "name": "设备列表", "pos": "现有设备台账管理"},
+    {"id": "device-add", "name": "Add Device", "pos": "Enter new cable & device info"},
+    {"id": "device-list", "name": "Device List", "pos": "Manage existing device ledger"},
 ]
 
 ALARM_PARAMETERS = [
     {"key": "total_rms", "label": "Total RMS", "unit": "A"},
-    {"key": "peak_current", "label": "峰值电流", "unit": "A"},
-    {"key": "valley_current", "label": "谷值电流", "unit": "A"},
-    {"key": "peak_phase", "label": "峰值相位偏移", "unit": "deg"},
-    {"key": "valley_phase", "label": "谷值相位偏移", "unit": "deg"},
-    {"key": "zero_cross", "label": "过零点偏移", "unit": "deg"},
+    {"key": "peak_current", "label": "Peak Current", "unit": "A"},
+    {"key": "valley_current", "label": "Valley Current", "unit": "A"},
+    {"key": "peak_phase", "label": "Peak Phase Offset", "unit": "deg"},
+    {"key": "valley_phase", "label": "Valley Phase Offset", "unit": "deg"},
+    {"key": "zero_cross", "label": "Zero-cross Offset", "unit": "deg"},
     {"key": "thd", "label": "THD", "unit": "%"},
-    {"key": "harmonic_1", "label": "1次谐波", "unit": "%"},
-    {"key": "harmonic_2", "label": "2次谐波", "unit": "%"},
-    {"key": "harmonic_3", "label": "3次谐波", "unit": "%"},
-    {"key": "harmonic_5", "label": "5次谐波", "unit": "%"},
-    {"key": "harmonic_7", "label": "7次谐波", "unit": "%"},
+    {"key": "harmonic_1", "label": "1st Harmonic", "unit": "%"},
+    {"key": "harmonic_2", "label": "2nd Harmonic", "unit": "%"},
+    {"key": "harmonic_3", "label": "3rd Harmonic", "unit": "%"},
+    {"key": "harmonic_5", "label": "5th Harmonic", "unit": "%"},
+    {"key": "harmonic_7", "label": "7th Harmonic", "unit": "%"},
 ]
 
 DEFAULT_ALARM_THRESHOLDS = {
@@ -168,8 +168,8 @@ def normalize_devices(devices):
         normalized.append(
             {
                 "id": device.get("id", ""),
-                "name": device.get("name", "未命名设备"),
-                "pos": device.get("pos", "未填写位置信息"),
+                "name": device.get("name", "Unnamed Device"),
+                "pos": device.get("pos", "No Location Info"),
                 "model": device.get("model", "-"),
                 "length": device.get("length", "-"),
                 "laying_method": device.get("laying_method", "-"),
@@ -187,7 +187,7 @@ def normalize_devices(devices):
                 "ct_ratio": device.get("ct_ratio", MODBUS_DEFAULTS["ct_ratio"]),
                 "ct_offset": device.get("ct_offset", MODBUS_DEFAULTS["ct_offset"]),
                 "channel_enable": device.get("channel_enable", MODBUS_DEFAULTS["channel_enable"]),
-                "online_status": device.get("online_status", "在线" if device.get("ip_address") or device.get("addr_485", "-") != "-" else "离线"),
+                "online_status": device.get("online_status", "Online" if device.get("ip_address") or device.get("addr_485", "-") != "-" else "Offline"),
             }
         )
     return normalized
@@ -243,7 +243,7 @@ def get_channel_toggle_style(status):
 
 def get_channel_toggle_children(status):
     enabled = status == "enabled"
-    label = "启用" if enabled else "禁用"
+    label = "Enable" if enabled else "Disable"
     knob = html.Span(
         style={
             "width": "30px",
@@ -311,7 +311,8 @@ def generate_alarm_events(devices, thresholds):
                     "item": parameter["label"],
                     "value": f'{current_value:.2f} {parameter["unit"]}'.strip(),
                     "limit": f"{lower:.2f} ~ {upper:.2f} {parameter['unit']}".strip(),
-                            "info": f'{device["name"]} 的 {parameter["label"]} 当前值为 {current_value:.2f}，已超出设定阈值',
+                            "info": f'{device["name"]}\'s {parameter["label"]} is {current_value:.2f}, exceeding the threshold',
+                    "info": f'{device["name"]}\'s {parameter["label"]} is {current_value:.2f}, exceeding the threshold',
                 }
             )
             event_id += 1

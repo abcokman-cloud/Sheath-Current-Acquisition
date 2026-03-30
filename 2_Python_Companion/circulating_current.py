@@ -10,7 +10,7 @@ app.index_string = '''
 <html>
     <head>
         {%metas%}
-        <title>护套环流监测系统</title>
+        <title>Sheath Circulating Current Monitoring</title>
         {%favicon%}
         {%css%}
         <style>

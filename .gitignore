@@ -33,4 +33,5 @@ OBJ/
 # 2_Python_Companion/
 
 **/history_files/
-
+history_files/
+**/__pycache__/

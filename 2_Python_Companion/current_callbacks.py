@@ -80,15 +80,15 @@ def register_callbacks(app):
         monitor_devices = normalize_devices(devices_data or CABLES)
         if page == "monitor":
             cur_list = monitor_devices
-            list_title = "电缆线路列表"
+            list_title = "Cable Line List"
             content = build_monitor_content(sel_id, monitor_devices, alarm_thresholds)
         elif page == "alarm":
             cur_list = ALARM_MENU
-            list_title = "报警管理菜单"
+            list_title = "Alarm Menus"
             content = build_alarm_content(sel_id, alarm_events or [], alarm_thresholds or {})
         else:
             cur_list = DEVICE_MENU
-            list_title = "设备管理菜单"
+            list_title = "Device Menus"
             content = build_device_content(sel_id, monitor_devices, form_data, editing_device_id)
         return content, build_left_items(cur_list, sel_id), list_title
 
@@ -129,7 +129,7 @@ def register_callbacks(app):
         if not n_clicks:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update
         current_devices = normalize_devices(devices_data or CABLES)
-        display_name = cable_name or f"新增设备{len(current_devices) + 1}"
+        display_name = cable_name or f"New Device {len(current_devices) + 1}"
         position_parts = [part for part in [tunnel_name, phase, device_location] if part]
         channel_index = int(channel_count or 1)
         normalized_flags = [1 if index == channel_index - 1 else 0 for index in range(8)]
@@ -138,7 +138,7 @@ def register_callbacks(app):
         new_device = {
             "id": editing_device_id or f"cbl-user-{len(current_devices) + 1}",
             "name": display_name,
-            "pos": " / ".join(position_parts) if position_parts else "未填写位置信息",
+            "pos": " / ".join(position_parts) if position_parts else "No Location Info",
             "model": cable_model or "-",
             "length": cable_length or "-",
             "laying_method": laying_method or "-",
@@ -156,7 +156,7 @@ def register_callbacks(app):
             "ct_ratio": float(ct_ratio if ct_ratio is not None else MODBUS_DEFAULTS["ct_ratio"]),
             "ct_offset": float(ct_offset if ct_offset is not None else MODBUS_DEFAULTS["ct_offset"]),
             "channel_enable": format_channel_enable(normalized_flags),
-            "online_status": "在线" if (ip_address or addr_485) else "离线",
+            "online_status": "Online" if (ip_address or addr_485) else "Offline",
         }
         if editing_device_id:
             current_devices = [new_device if device["id"] == editing_device_id else device for device in current_devices]
@@ -189,7 +189,7 @@ def register_callbacks(app):
         if target_device is None:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update
         form_data = {
-            "name": "" if target_device.get("name") == "未命名设备" else target_device.get("name", ""),
+            "name": "" if target_device.get("name") == "Unnamed Device" else target_device.get("name", ""),
             "model": "" if target_device.get("model") == "-" else target_device.get("model", ""),
             "length": "" if target_device.get("length") == "-" else target_device.get("length", ""),
             "laying_method": "" if target_device.get("laying_method") == "-" else target_device.get("laying_method", ""),
@@ -232,10 +232,10 @@ def register_callbacks(app):
             upper = upper_values[idx] if idx < len(upper_values) and upper_values[idx] is not None else default["upper"]
             thresholds[parameter["key"]] = {"lower": float(lower), "upper": float(upper)}
             
-        # 利用 CSS 动画代替 Interval 计时器
+        # Using CSS animations instead of Interval timer
         success_msg = html.Div(
-            "已保存成功！",
-            id=f"toast-msg-{n_clicks}", # 每次点击赋予新ID，强制浏览器重新播放动画
+            "Saved Successfully!",
+            id=f"toast-msg-{n_clicks}", # Assign new ID on every click to force replay animation
             style={
                 "color": "#52c41a",
                 "fontWeight": "bold",
@@ -247,7 +247,7 @@ def register_callbacks(app):
                 "textAlign": "center",
                 "display": "inline-flex",
                 "alignItems": "center",
-                "animation": "fadeOutMessage 3s forwards", # 3秒自动淡出
+                "animation": "fadeOutMessage 3s forwards", # Auto fade out after 3s
                 "pointerEvents": "none",
             }
         )
@@ -277,8 +277,8 @@ def register_callbacks(app):
             alarm_data = next((item for item in (alarm_events or []) if item["id"] == callback_id["index"]), None)
             if alarm_data is None:
                 return dash.no_update
-            analysis_text = f"针对“{alarm_data['item']}”的AI分析结论：当前数据已经超过设定阈值，建议优先核查接地回路、传感器接线和最近一次现场工况变化。"
-            content = html.Div(style={"padding": "20px", "backgroundColor": "#120338", "border": "1px solid #722ed1", "borderRadius": "8px"}, children=[html.H4(f"AI 分析报告 - {alarm_data['item']}", style={"color": "#b37feb", "marginTop": "0"}), html.P(analysis_text, style={"lineHeight": "1.6"}), html.Button("点击此处关闭分析报告", style={"marginTop": "10px", "padding": "5px 15px", "backgroundColor": "#434343", "color": "white", "border": "none", "borderRadius": "4px", "cursor": "pointer"})])
+            analysis_text = f"AI Analysis for '{alarm_data['item']}': The current data has exceeded the threshold. It is recommended to prioritize checking the grounding loop, sensor wiring, and recent field condition changes."
+            content = html.Div(style={"padding": "20px", "backgroundColor": "#120338", "border": "1px solid #722ed1", "borderRadius": "8px"}, children=[html.H4(f"AI Analysis Report - {alarm_data['item']}", style={"color": "#b37feb", "marginTop": "0"}), html.P(analysis_text, style={"lineHeight": "1.6"}), html.Button("Click here to close the analysis report", style={"marginTop": "10px", "padding": "5px 15px", "backgroundColor": "#434343", "color": "white", "border": "none", "borderRadius": "4px", "cursor": "pointer"})])
             return content, {"display": "block", "marginTop": "20px"}
         return dash.no_update
 
