@@ -1,8 +1,25 @@
+import time
 from datetime import datetime
 
 import numpy as np
 from dash import html
 
+
+last_metrics_cache = {}
+last_update_time = 0
+
+def get_cached_metrics(device_id):
+    global last_metrics_cache, last_update_time
+    
+    # If data is updated within 5 seconds and the device is in the cache, return the old data
+    if time.time() - last_update_time < 5 and device_id in last_metrics_cache:
+        return last_metrics_cache[device_id]
+    
+    # Otherwise, perform the slow read operation
+    data = get_monitor_metrics(device_id)
+    last_metrics_cache[device_id] = data
+    last_update_time = time.time()
+    return data
 
 CABLES = [
     {"id": "cbl-1", "name": "HV Cable 1", "pos": "Switchgear Phase A"},
@@ -270,23 +287,87 @@ def normalize_thresholds(thresholds):
     return normalized
 
 
-def get_monitor_metrics(cable_id):
-    _, ya, peak_current, valley_current, total_rms, harm, thd, peak_phase, valley_phase, zero_cross = get_advanced_mock_data(cable_id)
-    del ya
+# Global status tracking
+connection_status = {
+    "fail_count": 0,      # Consecutive failure count
+    "next_retry_time": 0  # Timestamp for next allowed retry
+}
+
+def get_wait_time(fail_count):
+    """Calculate waiting seconds based on failure count"""
+    if fail_count == 1: return 5          # 5 seconds
+    if fail_count == 2: return 60         # 1 minute
+    if fail_count == 3: return 3600       # 1 hour
+    return 86400                          # 24 hours (Max)
+
+def get_fallback_data(device_id):
+    # Return offline flag to let the frontend display "Device Offline" or "Communication Error"
     return {
-        "total_rms": float(total_rms),
-        "peak_current": float(peak_current),
-        "valley_current": float(valley_current),
-        "peak_phase": parse_numeric_text(peak_phase),
-        "valley_phase": parse_numeric_text(valley_phase),
-        "zero_cross": parse_numeric_text(zero_cross),
-        "thd": float(thd),
-        "harmonic_1": float(harm[0]),
-        "harmonic_2": float(harm[1]),
-        "harmonic_3": float(harm[2]),
-        "harmonic_5": float(harm[4]),
-        "harmonic_7": float(harm[6]),
+        "status": "offline", 
+        "current": 0, 
+        "msg": "Lower machine offline",
+        # Providing default values to prevent KeyError in the alarm checking logic
+        "total_rms": 0.0,
+        "peak_current": 0.0,
+        "valley_current": 0.0,
+        "peak_phase": 0.0,
+        "valley_phase": 0.0,
+        "zero_cross": 0.0,
+        "thd": 0.0,
+        "harmonic_1": 0.0,
+        "harmonic_2": 0.0,
+        "harmonic_3": 0.0,
+        "harmonic_5": 0.0,
+        "harmonic_7": 0.0,
     }
+
+def get_monitor_metrics(device_id):
+    global connection_status
+    now = time.time()
+
+    # 1. Check if in the "cooldown period"
+    if now < connection_status["next_retry_time"]:
+        # Return fallback data directly during cooldown, skip network connection
+        return get_fallback_data(device_id)
+
+    try:
+        # 2. Attempt connection (ensure a 1-second hard timeout is set)
+        # data = perform_real_acquisition(device_id, timeout=1.0)
+        
+        # Integrated existing mock data logic to simulate successful acquisition
+        _, ya, peak_current, valley_current, total_rms, harm, thd, peak_phase, valley_phase, zero_cross = get_advanced_mock_data(device_id)
+        del ya
+        data = {
+            "total_rms": float(total_rms),
+            "peak_current": float(peak_current),
+            "valley_current": float(valley_current),
+            "peak_phase": parse_numeric_text(peak_phase),
+            "valley_phase": parse_numeric_text(valley_phase),
+            "zero_cross": parse_numeric_text(zero_cross),
+            "thd": float(thd),
+            "harmonic_1": float(harm[0]),
+            "harmonic_2": float(harm[1]),
+            "harmonic_3": float(harm[2]),
+            "harmonic_5": float(harm[4]),
+            "harmonic_7": float(harm[6]),
+            "status": "success"
+        }
+        
+        # Reset counters upon success
+        connection_status["fail_count"] = 0
+        connection_status["next_retry_time"] = 0
+        return data
+
+    except Exception as e:
+        # 3. Connection failed, escalate failure level
+        connection_status["fail_count"] += 1
+        wait_time = get_wait_time(connection_status["fail_count"])
+        connection_status["next_retry_time"] = now + wait_time
+        
+        print(f"Device {device_id} connection failed ({connection_status['fail_count']} times). "
+              f"Will retry in {wait_time} seconds. Error: {e}")
+        
+        return get_fallback_data(device_id)
 
 
 def generate_alarm_events(devices, thresholds):
