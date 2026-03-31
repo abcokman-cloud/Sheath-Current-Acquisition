@@ -49,6 +49,8 @@ Bash
 python circulating_current.py
 Access via browser: http://127.0.0.1:8050/
 
+Additionally, you can visit the external demo page at http://217.142.227.124:8050/.
+
 📝 Development Reflections & Roadmap
 This project represents a major milestone in merging my Electrical Engineering background with a Modern Software Stack.
 
