@@ -51,6 +51,18 @@ Access via browser: http://127.0.0.1:8050/
 
 Additionally, you can visit the external demo page at http://138.2.54.115:8050/
 
+---
+
+### 📝 Changelog
+*   **v1.0.0 (2026-04-10)**
+    *   🎉 Initial project release.
+    *   Completed core development of the Sheath Circulating Current Monitoring System.
+    *   Implemented STM32 firmware for signal acquisition and edge processing.
+    *   Developed Python Dash dashboard for real-time visualization, alarms, and asset management.
+    *   📢 **Project Status Note:** All planned core functionalities are now fully implemented and stable. While I won't be making proactive updates moving forward, **I warmly welcome bug reports, feature requests, and general feedback!** Please feel free to open an issue.
+
+---
+
 📝 Development Reflections & Roadmap
 This project represents a major milestone in merging my Electrical Engineering background with a Modern Software Stack.
 
